@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Slide Automation Tool (16:9)</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Inter:wght@400;700;900&family=Montserrat:wght@400;700;900&family=Mukta:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=Noto+Serif:wght@400;700;900&family=Noto+Serif+Devanagari:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700;900&family=Tiro+Devanagari+Hindi&display=swap">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    .aspect-16-9 {
+      aspect-ratio: 16 / 9;
+    }
+    
+    /* Intro Animations */
+    @keyframes popDown {
+      0% {
+        transform: translateY(-100px) scale(0.8);
+        opacity: 0;
+      }
+      70% {
+        transform: translateY(10px) scale(1.02);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideFromTop {
+      0% {
+        transform: translateY(-60px);
+        opacity: 0;
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* Dark Green Pop-Up Animation for Answer Reveal */
+    @keyframes answerPopUp {
+      0% {
+        transform: scale(1);
+        background-color: #14532d !important;
+        box-shadow: 0 0 10px rgba(20, 83, 45, 0.6);
+      }
+      50% {
+        transform: scale(1.06);
+        background-color: #15803d !important;
+        box-shadow: 0 0 25px rgba(21, 128, 61, 0.95);
+      }
+      75% {
+        transform: scale(0.98);
+        background-color: #14532d !important;
+      }
+      100% {
+        transform: scale(1);
+        background-color: #14532d !important;
+        box-shadow: 0 0 15px rgba(20, 83, 45, 0.8);
+      }
+    }
+
+    .animate-pop-down {
+      animation: popDown 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .animate-option-entrance {
+      animation: slideFromTop 0.5s ease-out forwards;
+    }
+
+    .correct-answer-animated {
+      animation: answerPopUp 0.7s ease-out forwards !important;
+      border-color: #4ade80 !important;
+      background-color: #14532d !important;
+      z-index: 10;
+    }
+
+    .correct-answer-animated .opt-wrapper, 
+    .correct-answer-animated .opt-text {
+      color: #fde047 !important;
+    }
+
+    .wrong-answer-box {
+      background-color: #dc2626 !important;
+      border-color: #ef4444 !important;
+    }
+
+    .wrong-answer-box .opt-wrapper, 
+    .wrong-answer-box .opt-text {
+      color: #ffffff !important;
+    }
+
+    #timerVideoOverlay {
+      position: absolute;
+      display: none;
+      z-index: 60;
+      width: 359px;
+      height: auto;
+      object-fit: contain;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+    #timerVideoOverlay:active {
+      cursor: grabbing;
+    }
+
+    #logoOverlay {
+      position: absolute;
+      display: none;
+      top: 12px;
+      left: 12px;
+      width: 131px;
+      height: 131px;
+      object-fit: contain;
+      z-index: 35;
+      cursor: move;
+      touch-action: none;
+      user-select: none;
+    }
+
+    /* Container for exact text dimension measurements */
+    #qText {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      hyphens: auto;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col items-center p-3 font-sans">
+
+  <!-- Header -->
+  <header class="w-full max-w-7xl flex flex-wrap gap-3 justify-between items-center bg-gray-900 p-3 rounded-xl shadow-lg border border-gray-800 mb-3">
+    <div>
+      <h1 class="text-base font-bold text-yellow-400">Quiz Automation Tool (16:9 Design)</h1>
+      <p class="text-xs text-gray-400">Auto-Fitting Question Text with Dynamic Line-Height Adjustment</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg font-semibold text-xs transition shadow">
+        📂 Manage Questions (Bulk)
+      </button>
+      <label class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg font-semibold text-xs cursor-pointer transition shadow">
+        🖼️ Upload Background
+        <input type="file" id="bgUpload" accept="image/*" class="hidden" onchange="loadBackground(event)">
+      </label>
+      <label class="bg-pink-600 hover:bg-pink-700 px-3 py-1.5 rounded-lg font-semibold text-xs cursor-pointer transition shadow">
+        🏷️ Upload Logo
+        <input type="file" id="logoUpload" accept="image/*" class="hidden" onchange="loadLogo(event)">
+      </label>
+      <button onclick="downloadPNG()" class="bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-lg font-semibold text-xs transition shadow flex items-center gap-1">
+        ⬇️ Download HD PNG
+      </button>
+      <button onclick="downloadAllPNGs()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg font-semibold text-xs transition shadow flex items-center gap-1">
+        📦 Download All Images (ZIP)
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace Container -->
+  <main class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-4 items-start mb-4">
+    
+    <!-- Left Canvas Screen -->
+    <section class="lg:col-span-8 flex flex-col items-center justify-center bg-gray-900 p-3 rounded-xl border border-gray-800 shadow-2xl">
+      
+      <div id="canvasWrapper" class="w-full flex justify-center items-center py-1">
+        
+        <!-- MAIN CANVAS -->
+        <div id="captureArea" class="w-full max-w-[1280px] aspect-16-9 bg-[#00AEEF] pt-3 px-3 pb-3 rounded-xl shadow-2xl flex flex-col items-start gap-2 relative overflow-hidden border-2 border-gray-800 bg-cover bg-center">
+          
+          <!-- LOGO OVERLAY (Draggable) -->
+          <img id="logoOverlay" alt="Logo" draggable="false">
+
+          <!-- TIMER VIDEO OVERLAY (Draggable) -->
+          <video id="timerVideoOverlay" playsinline preload="auto"></video>
+
+          <!-- QUESTION BOX -->
+          <div id="q-box" class="bg-[#FFFF00] rounded-xl flex items-center justify-center p-4 shadow-md border border-black/10 transition-all animate-pop-down text-center overflow-hidden" style="height: 30%; width: 100%; margin: 0;">
+            <h1 id="qText" class="font-bold text-center flex items-center justify-center w-full h-full max-h-full" style="font-size: 51px; font-family: 'Tiro Devanagari Hindi', serif; color: rgb(30, 0, 255); line-height: 1.2;">
+              Loading Question...
+            </h1>
+          </div>
+
+          <!-- OPTIONS CONTAINER -->
+          <div id="optionsContainer" class="flex-1 flex flex-col justify-between py-1" style="width: 65%; max-width: 100%; margin-left: 0; margin-right: auto;">
+            
+            <div id="opt-0" class="opt-box bg-[#0000FF] rounded-lg flex items-center px-4 shadow-md border border-white/10 cursor-pointer transition-colors hover:brightness-110 animate-option-entrance" style="height: 22%; animation-delay: 0.1s;" onclick="selectOption(0)">
+              <span class="opt-wrapper text-white font-semibold flex items-center gap-3 w-full h-full" style="font-size: 32px; font-family: 'Noto Serif Devanagari', serif;">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm sm:text-base font-bold flex-shrink-0">A</span>
+                <span class="opt-text flex-1 flex items-center" style="padding-top: 2px;">Option A Text</span>
+              </span>
+            </div>
+
+            <div id="opt-1" class="opt-box bg-[#0000FF] rounded-lg flex items-center px-4 shadow-md border border-white/10 cursor-pointer transition-colors hover:brightness-110 animate-option-entrance" style="height: 22%; animation-delay: 0.2s;" onclick="selectOption(1)">
+              <span class="opt-wrapper text-white font-semibold flex items-center gap-3 w-full h-full" style="font-size: 32px; font-family: 'Noto Serif Devanagari', serif;">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm sm:text-base font-bold flex-shrink-0">B</span>
+                <span class="opt-text flex-1 flex items-center" style="padding-top: 2px;">Option B Text</span>
+              </span>
+            </div>
+
+            <div id="opt-2" class="opt-box bg-[#0000FF] rounded-lg flex items-center px-4 shadow-md border border-white/10 cursor-pointer transition-colors hover:brightness-110 animate-option-entrance" style="height: 22%; animation-delay: 0.3s;" onclick="selectOption(2)">
+              <span class="opt-wrapper text-white font-semibold flex items-center gap-3 w-full h-full" style="font-size: 32px; font-family: 'Noto Serif Devanagari', serif;">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm sm:text-base font-bold flex-shrink-0">C</span>
+                <span class="opt-text flex-1 flex items-center" style="padding-top: 2px;">Option C Text</span>
+              </span>
+            </div>
+
+            <div id="opt-3" class="opt-box bg-[#0000FF] rounded-lg flex items-center px-4 shadow-md border border-white/10 cursor-pointer transition-colors hover:brightness-110 animate-option-entrance" style="height: 22%; animation-delay: 0.4s;" onclick="selectOption(3)">
+              <span class="opt-wrapper text-white font-semibold flex items-center gap-3 w-full h-full" style="font-size: 32px; font-family: 'Noto Serif Devanagari', serif;">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm sm:text-base font-bold flex-shrink-0">D</span>
+                <span class="opt-text flex-1 flex items-center" style="padding-top: 2px;">Option D Text</span>
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Control Bar -->
+      <div class="flex flex-wrap gap-3 mt-3 items-center bg-gray-950 px-4 py-2 rounded-lg border border-gray-800">
+        <button onclick="prevQuestion()" class="bg-gray-800 hover:bg-gray-700 text-yellow-400 px-4 py-1.5 rounded text-xs font-bold transition">◀ Previous</button>
+        <span id="pageIndicator" class="text-gray-300 font-medium px-3 text-xs">Slide 1 / 1</span>
+        <button onclick="nextQuestion()" class="bg-gray-800 hover:bg-gray-700 text-yellow-400 px-4 py-1.5 rounded text-xs font-bold transition">Next ▶</button>
+        <button id="showAnsBtn" onclick="revealAnswer()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-xs font-bold transition">💡 Show Answer</button>
+        <button id="startTimerBtn" onclick="startQuizTimer()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded text-xs font-bold transition">⏱ START TIMER</button>
+      </div>
+
+    </section>
+
+    <!-- Controls Sidebar -->
+    <section class="lg:col-span-4 flex flex-col gap-3 max-h-[780px] overflow-y-auto pr-1">
+      
+      <!-- Font Family Controls -->
+      <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg space-y-3">
+        <h2 class="text-xs font-bold text-yellow-400 border-b border-gray-700 pb-1">🔤 Font Family Controls</h2>
+        
+        <div class="grid grid-cols-1 gap-2">
+          <div>
+            <label class="text-[10px] text-gray-300 block mb-1">Question Text Font:</label>
+            <select id="qFontFamily" onchange="applyStyles()" class="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs">
+              <option value="'Tiro Devanagari Hindi', serif" selected>Tiro Devanagari Hindi (Default)</option>
+              <option value="'Noto Serif Devanagari', serif">Noto Serif Devanagari</option>
+              <option value="'Noto Serif', serif">Noto Serif Bold</option>
+              <option value="'Hind', sans-serif">Hind</option>
+              <option value="'Mukta', sans-serif">Mukta</option>
+              <option value="'Poppins', sans-serif">Poppins</option>
+              <option value="'Roboto', sans-serif">Roboto</option>
+              <option value="'Montserrat', sans-serif">Montserrat</option>
+              <option value="'Inter', sans-serif">Inter</option>
+              <option value="'Noto Sans Devanagari', sans-serif">Noto Sans Devanagari</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block mb-1">Option Text Font:</label>
+            <select id="optFontFamily" onchange="applyStyles()" class="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs">
+              <option value="'Noto Serif Devanagari', serif" selected>Noto Serif Devanagari (Default)</option>
+              <option value="'Tiro Devanagari Hindi', serif">Tiro Devanagari Hindi</option>
+              <option value="'Noto Serif', serif">Noto Serif Bold</option>
+              <option value="'Hind', sans-serif">Hind</option>
+              <option value="'Mukta', sans-serif">Mukta</option>
+              <option value="'Poppins', sans-serif">Poppins</option>
+              <option value="'Roboto', sans-serif">Roboto</option>
+              <option value="'Montserrat', sans-serif">Montserrat</option>
+              <option value="'Inter', sans-serif">Inter</option>
+              <option value="'Noto Sans Devanagari', sans-serif">Noto Sans Devanagari</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Size & Layout Controls -->
+      <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg space-y-3">
+        <h2 class="text-xs font-bold text-yellow-400 border-b border-gray-700 pb-1">📐 Size & Layout Controls</h2>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] text-gray-300 block">Question Max Size (<span id="qFontSizeVal">51</span>px)</label>
+            <input type="range" id="qFontSize" min="14" max="70" value="51" oninput="applyStyles()" class="w-full accent-yellow-500">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block">Option Text Size (<span id="optFontSizeVal">32</span>px)</label>
+            <input type="range" id="optFontSize" min="12" max="45" value="32" oninput="applyStyles()" class="w-full accent-yellow-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] text-gray-300 block">Question Box Height (<span id="qBoxHeightVal">30</span>%)</label>
+            <input type="range" id="qBoxHeight" min="15" max="50" value="30" oninput="applyStyles()" class="w-full accent-yellow-500">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block">Question Box Width (<span id="qBoxWidthVal">100</span>%)</label>
+            <input type="range" id="qBoxWidth" min="40" max="100" value="100" oninput="applyStyles()" class="w-full accent-yellow-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] text-gray-300 block">Options Block Width (<span id="optContainerWidthVal">65</span>%)</label>
+            <input type="range" id="optContainerWidth" min="40" max="100" value="65" oninput="applyStyles()" class="w-full accent-yellow-500">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block">Single Option Height (<span id="optHeightVal">22</span>%)</label>
+            <input type="range" id="optHeight" min="12" max="35" value="22" oninput="applyStyles()" class="w-full accent-yellow-500">
+          </div>
+        </div>
+      </div>
+
+      <!-- Color Controls -->
+      <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg space-y-2">
+        <h2 class="text-xs font-bold text-yellow-400 border-b border-gray-700 pb-1">🎨 Color Customizer</h2>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] text-gray-300 block mb-1">Question Bg</label>
+            <input type="color" id="qBgColor" value="#FFFF00" oninput="applyStyles()" class="w-full h-7 bg-gray-900 border border-gray-700 rounded cursor-pointer">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block mb-1">Question Text Color</label>
+            <input type="color" id="qTextColor" value="#1E00FF" oninput="applyStyles()" class="w-full h-7 bg-gray-900 border border-gray-700 rounded cursor-pointer">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block mb-1">Options Bg</label>
+            <input type="color" id="optBgColor" value="#0000FF" oninput="applyStyles()" class="w-full h-7 bg-gray-900 border border-gray-700 rounded cursor-pointer">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-300 block mb-1">Options Text</label>
+            <input type="color" id="optTextColor" value="#FFFFFF" oninput="applyStyles()" class="w-full h-7 bg-gray-900 border border-gray-700 rounded cursor-pointer">
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] text-gray-300 block mb-1">Canvas Background Fallback</label>
+          <input type="color" id="canvasBgColor" value="#00AEEF" oninput="applyStyles()" class="w-full h-7 bg-gray-900 border border-gray-700 rounded cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Timer Video Controls -->
+      <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg space-y-2">
+        <h2 class="text-xs font-bold text-yellow-400 border-b border-gray-700 pb-1">⏱️ Timer Video Settings</h2>
+        <label class="block bg-red-600 hover:bg-red-700 text-white text-center px-3 py-2 rounded text-xs font-bold cursor-pointer transition">
+          Upload Timer Video
+          <input id="timerVideoUpload" type="file" accept="video/*" class="hidden" onchange="loadTimerVideo(event)">
+        </label>
+        <div>
+          <label class="text-[10px] text-gray-400 block mb-1">Timer Video Size: <span id="timerVideoSizeVal">359</span>px</label>
+          <input id="timerVideoSize" type="range" min="80" max="600" value="359" oninput="applyTimerVideoSize()" class="w-full accent-yellow-500">
+        </div>
+        <button onclick="resetTimerVideoPosition()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs font-semibold w-full">Reset Timer Position</button>
+      </div>
+
+      <!-- Logo Settings -->
+      <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg space-y-2">
+        <h2 class="text-xs font-bold text-yellow-400 border-b border-gray-700 pb-1">🏷️ Logo Controls</h2>
+        <div>
+          <label class="text-[10px] text-gray-400 block mb-1">Logo Size: <span id="logoSizeVal">131</span>px</label>
+          <input type="range" id="logoSize" min="40" max="300" value="131" oninput="applyLogoSettings()" class="w-full accent-yellow-500">
+        </div>
+        <p class="text-[10px] text-gray-400">Logo timer khatam hone ke baad automatic screen par dikhega.</p>
+      </div>
+
+      <!-- Manual Content Editor -->
+      <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg space-y-2">
+        <h2 class="text-xs font-bold text-yellow-400 border-b border-gray-700 pb-1">✏️ Edit Current Slide</h2>
+        <div>
+          <label class="text-[10px] text-gray-400 block">Question:</label>
+          <textarea id="editQuestionInput" rows="2" oninput="updateSlideContent()" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white focus:outline-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="text-[10px] text-gray-400 block">Opt A:</label><input type="text" id="editOptA" oninput="updateSlideContent()" class="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white"></div>
+          <div><label class="text-[10px] text-gray-400 block">Opt B:</label><input type="text" id="editOptB" oninput="updateSlideContent()" class="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white"></div>
+          <div><label class="text-[10px] text-gray-400 block">Opt C:</label><input type="text" id="editOptC" oninput="updateSlideContent()" class="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white"></div>
+          <div><label class="text-[10px] text-gray-400 block">Opt D:</label><input type="text" id="editOptD" oninput="updateSlideContent()" class="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white"></div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Bulk Question Upload Modal -->
+  <div id="questionModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-gray-800 w-full max-w-2xl p-5 rounded-xl border border-gray-700 flex flex-col gap-3 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+        <h2 class="text-base font-bold text-yellow-400">Manage & Bulk Upload Questions (100+)</h2>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
+      </div>
+      <p class="text-xs text-gray-300">
+        Enter questions line-by-line in Pipe format:<br>
+        <code class="text-yellow-400">Question Text | Option A | Option B | Option C | Option D | Correct Answer (A/B/C/D)</code>
+      </p>
+      <textarea id="bulkInput" rows="8" class="w-full bg-gray-900 border border-gray-700 p-2.5 rounded text-white font-mono text-xs focus:border-yellow-500 focus:outline-none" placeholder="What is the capital of India? | Delhi | Mumbai | Kolkata | Chennai | A
+Bharat ki khoj kisne ki thi aur ye kis varsh me hui thi bataye? | Vasco da Gama | Columbus | Alexander | Magellan | A"></textarea>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal()" class="bg-gray-700 hover:bg-gray-600 px-3.5 py-1.5 rounded text-xs font-semibold">Cancel</button>
+        <button onclick="saveBulkQuestions()" class="bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 rounded text-xs font-semibold">Load Questions</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let questions = [
+      {
+        q: "What is the capital of India?",
+        options: ["Delhi", "Mumbai", "Kolkata", "Chennai"],
+        answer: "A"
+      }
+    ];
+    let currentIndex = 0;
+    let timerVideoObjectUrl = null;
+    let autoNextTimeout = null;
+    let isLogoUploaded = false;
+
+    /**
+     * DYNAMIC AUTO-FIT QUESTION TEXT & LINE HEIGHT
+     * Ensures question text never overflows the yellow box when spanning 2 or 3+ lines.
+     */
+    function autoFitQuestionText() {
+      const qBox = document.getElementById('q-box');
+      const qText = document.getElementById('qText');
+      if (!qBox || !qText) return;
+
+      const baseMaxFontSize = parseInt(document.getElementById('qFontSize').value) || 51;
+      
+      // Reset font-size & line-height to starting base value
+      let fontSize = baseMaxFontSize;
+      let lineHeight = 1.25;
+
+      qText.style.fontSize = fontSize + 'px';
+      qText.style.lineHeight = lineHeight;
+
+      // Available container bounds (accounting for padding)
+      const maxAvailableHeight = qBox.clientHeight - 16; // 16px buffer
+      const maxAvailableWidth = qBox.clientWidth - 20;
+
+      // Decrement font size and line height dynamically if scrollHeight exceeds available height or width
+      while (
+        (qText.scrollHeight > maxAvailableHeight || qText.scrollWidth > maxAvailableWidth) && 
+        fontSize > 14
+      ) {
+        fontSize -= 1;
+        // Adjust line-height tightly as font size drops for multi-line text (2-3 lines)
+        if (fontSize < 40) {
+          lineHeight = 1.12;
+        } else if (fontSize < 46) {
+          lineHeight = 1.18;
+        } else {
+          lineHeight = 1.22;
+        }
+
+        qText.style.fontSize = fontSize + 'px';
+        qText.style.lineHeight = lineHeight;
+      }
+    }
+
+    // Apply Live Style Tweaks & Fonts
+    function applyStyles() {
+      const qFontSize = document.getElementById('qFontSize').value;
+      const optFontSize = document.getElementById('optFontSize').value;
+      const qBoxHeight = document.getElementById('qBoxHeight').value;
+      const qBoxWidth = document.getElementById('qBoxWidth').value;
+      const optContainerWidth = document.getElementById('optContainerWidth').value;
+      const optHeight = document.getElementById('optHeight').value;
+
+      const qFontFamily = document.getElementById('qFontFamily').value;
+      const optFontFamily = document.getElementById('optFontFamily').value;
+
+      document.getElementById('qFontSizeVal').textContent = qFontSize;
+      document.getElementById('optFontSizeVal').textContent = optFontSize;
+      document.getElementById('qBoxHeightVal').textContent = qBoxHeight;
+      document.getElementById('qBoxWidthVal').textContent = qBoxWidth;
+      document.getElementById('optContainerWidthVal').textContent = optContainerWidth;
+      document.getElementById('optHeightVal').textContent = optHeight;
+
+      const qBox = document.getElementById('q-box');
+      const qText = document.getElementById('qText');
+      const qBgColor = document.getElementById('qBgColor').value;
+      const qTextColor = document.getElementById('qTextColor').value;
+
+      qBox.style.height = qBoxHeight + '%';
+      qBox.style.width = qBoxWidth + '%';
+      qBox.style.backgroundColor = qBgColor;
+      qText.style.color = qTextColor;
+      qText.style.fontFamily = qFontFamily;
+
+      const optContainer = document.getElementById('optionsContainer');
+      const optBgColor = document.getElementById('optBgColor').value;
+      const optTextColor = document.getElementById('optTextColor').value;
+
+      optContainer.style.width = optContainerWidth + '%';
+
+      for (let i = 0; i < 4; i++) {
+        const opt = document.getElementById(`opt-${i}`);
+        if (opt) {
+          opt.style.height = optHeight + '%';
+          if (!opt.classList.contains('correct-answer-animated') && !opt.classList.contains('wrong-answer-box')) {
+            opt.style.backgroundColor = optBgColor;
+          }
+          const optWrapper = opt.querySelector('.opt-wrapper');
+          if (optWrapper) {
+            optWrapper.style.fontSize = optFontSize + 'px';
+            optWrapper.style.fontFamily = optFontFamily;
+            if (!opt.classList.contains('correct-answer-animated')) {
+              optWrapper.style.color = optTextColor;
+            }
+          }
+        }
+      }
+
+      const captureArea = document.getElementById('captureArea');
+      captureArea.style.backgroundColor = document.getElementById('canvasBgColor').value;
+
+      // Trigger text auto-fitting after layout styles are applied
+      autoFitQuestionText();
+    }
+
+    // Load & Render Question
+    function renderQuestion() {
+      if (!questions.length) return;
+      stopQuizTimer();
+      if (autoNextTimeout) clearTimeout(autoNextTimeout);
+      resetOptionStyles();
+
+      // Trigger Intro Animations
+      const qBox = document.getElementById('q-box');
+      qBox.classList.remove('animate-pop-down');
+      void qBox.offsetWidth; // Force Reflow
+      qBox.classList.add('animate-pop-down');
+
+      for (let i = 0; i < 4; i++) {
+        const opt = document.getElementById(`opt-${i}`);
+        if (opt) {
+          opt.classList.remove('animate-option-entrance');
+          void opt.offsetWidth;
+          opt.classList.add('animate-option-entrance');
+        }
+      }
+
+      const cur = questions[currentIndex];
+      document.getElementById('qText').textContent = cur.q;
+
+      const optTexts = document.querySelectorAll('.opt-text');
+      cur.options.forEach((opt, i) => {
+        if (optTexts[i]) optTexts[i].textContent = opt;
+      });
+
+      document.getElementById('editQuestionInput').value = cur.q;
+      document.getElementById('editOptA').value = cur.options[0] || '';
+      document.getElementById('editOptB').value = cur.options[1] || '';
+      document.getElementById('editOptC').value = cur.options[2] || '';
+      document.getElementById('editOptD').value = cur.options[3] || '';
+
+      document.getElementById('pageIndicator').textContent = `Slide ${currentIndex + 1} / ${questions.length}`;
+      applyStyles();
+    }
+
+    function resetOptionStyles() {
+      const optBgColor = document.getElementById('optBgColor').value;
+      const optTextColor = document.getElementById('optTextColor').value;
+      for (let i = 0; i < 4; i++) {
+        const box = document.getElementById(`opt-${i}`);
+        if (box) {
+          box.classList.remove('correct-answer-animated', 'wrong-answer-box');
+          box.style.backgroundColor = optBgColor;
+          const wrapper = box.querySelector('.opt-wrapper');
+          if (wrapper) wrapper.style.color = optTextColor;
+        }
+      }
+    }
+
+    function selectOption(index) {
+      const cur = questions[currentIndex];
+      if (!cur || !cur.answer) return;
+      resetOptionStyles();
+
+      const correctIndex = cur.answer.trim().toUpperCase().charCodeAt(0) - 65;
+      const clickedBox = document.getElementById(`opt-${index}`);
+
+      if (index === correctIndex) {
+        clickedBox.classList.add('correct-answer-animated');
+      } else {
+        clickedBox.classList.add('wrong-answer-box');
+        const correctBox = document.getElementById(`opt-${correctIndex}`);
+        if (correctBox) correctBox.classList.add('correct-answer-animated');
+      }
+      applyStyles();
+    }
+
+    function revealAnswer() {
+      const cur = questions[currentIndex];
+      if (!cur || !cur.answer) return;
+      resetOptionStyles();
+      const correctIndex = cur.answer.trim().toUpperCase().charCodeAt(0) - 65;
+      const correctBox = document.getElementById(`opt-${correctIndex}`);
+      if (correctBox) {
+        correctBox.classList.remove('correct-answer-animated');
+        void correctBox.offsetWidth; // Force Reflow
+        correctBox.classList.add('correct-answer-animated');
+      }
+      applyStyles();
+    }
+
+    function updateSlideContent() {
+      const qVal = document.getElementById('editQuestionInput').value;
+      const optA = document.getElementById('editOptA').value;
+      const optB = document.getElementById('editOptB').value;
+      const optC = document.getElementById('editOptC').value;
+      const optD = document.getElementById('editOptD').value;
+
+      questions[currentIndex].q = qVal;
+      questions[currentIndex].options = [optA, optB, optC, optD];
+
+      document.getElementById('qText').textContent = qVal;
+      const optTexts = document.querySelectorAll('.opt-text');
+      [optA, optB, optC, optD].forEach((val, i) => {
+        if (optTexts[i]) optTexts[i].textContent = val;
+      });
+
+      autoFitQuestionText();
+    }
+
+    function nextQuestion() {
+      if (currentIndex < questions.length - 1) {
+        currentIndex++;
+        renderQuestion();
+      }
+    }
+
+    function prevQuestion() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderQuestion();
+      }
+    }
+
+    // Modal Bulk Import
+    function openModal() { document.getElementById('questionModal').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('questionModal').classList.add('hidden'); }
+    function saveBulkQuestions() {
+      const text = document.getElementById('bulkInput').value.trim();
+      if (!text) return;
+      const lines = text.split('\n');
+      const newQuestions = [];
+      lines.forEach(line => {
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length >= 5) {
+          newQuestions.push({
+            q: parts[0],
+            options: [parts[1], parts[2], parts[3], parts[4]],
+            answer: (parts[5] || 'A').toUpperCase()
+          });
+        }
+      });
+      if (newQuestions.length > 0) {
+        questions = newQuestions;
+        currentIndex = 0;
+        renderQuestion();
+        closeModal();
+      }
+    }
+
+    // Timer Video & Dynamic Logo Handling
+    function loadTimerVideo(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (timerVideoObjectUrl) URL.revokeObjectURL(timerVideoObjectUrl);
+      timerVideoObjectUrl = URL.createObjectURL(file);
+      const video = document.getElementById('timerVideoOverlay');
+      video.src = timerVideoObjectUrl;
+      applyTimerVideoSize();
+      resetTimerVideoPosition();
+      
+      video.onended = () => {
+        // Hide Timer Video when finished
+        video.style.display = 'none';
+
+        // Show Logo if uploaded
+        const logo = document.getElementById('logoOverlay');
+        if (isLogoUploaded) logo.style.display = 'block';
+
+        // Trigger Answer Reveal
+        revealAnswer();
+        const btn = document.getElementById('startTimerBtn');
+        btn.disabled = false;
+        btn.textContent = '⏱ START TIMER';
+
+        // Auto move to next slide after 5 seconds
+        if (autoNextTimeout) clearTimeout(autoNextTimeout);
+        autoNextTimeout = setTimeout(() => {
+          if (currentIndex < questions.length - 1) {
+            nextQuestion();
+          }
+        }, 5000);
+      };
+    }
+
+    function applyTimerVideoSize() {
+      const size = document.getElementById('timerVideoSize').value || 359;
+      document.getElementById('timerVideoSizeVal').textContent = size;
+      document.getElementById('timerVideoOverlay').style.width = size + 'px';
+    }
+
+    function resetTimerVideoPosition() {
+      const video = document.getElementById('timerVideoOverlay');
+      video.style.left = '65%';
+      video.style.top = '35%';
+    }
+
+    function startQuizTimer() {
+      const video = document.getElementById('timerVideoOverlay');
+      if (!video.src) {
+        alert('Pehle Timer Video Upload karein.');
+        return;
+      }
+      
+      resetOptionStyles();
+      if (autoNextTimeout) clearTimeout(autoNextTimeout);
+
+      // Hide logo while timer is running
+      document.getElementById('logoOverlay').style.display = 'none';
+
+      video.currentTime = 0;
+      video.style.display = 'block';
+      const btn = document.getElementById('startTimerBtn');
+      btn.textContent = '⏱ TIMER RUNNING';
+      btn.disabled = true;
+      video.play().catch(() => {
+        btn.disabled = false;
+        btn.textContent = '⏱ START TIMER';
+      });
+    }
+
+    function stopQuizTimer() {
+      const video = document.getElementById('timerVideoOverlay');
+      if (video && !video.paused) video.pause();
+      if (video) video.style.display = 'none';
+      const btn = document.getElementById('startTimerBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '⏱ START TIMER';
+      }
+    }
+
+    // Specific Drag-Drop Listeners for Logo & Timer Video
+    function enableSpecificDragging(element) {
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      element.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        initialLeft = element.offsetLeft;
+        initialTop = element.offsetTop;
+        element.setPointerCapture(e.pointerId);
+      });
+
+      element.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        element.style.left = `${initialLeft + dx}px`;
+        element.style.top = `${initialTop + dy}px`;
+      });
+
+      element.addEventListener('pointerup', (e) => {
+        isDragging = false;
+        try { element.releasePointerCapture(e.pointerId); } catch(err){}
+      });
+    }
+
+    // Attach drag support
+    enableSpecificDragging(document.getElementById('logoOverlay'));
+    enableSpecificDragging(document.getElementById('timerVideoOverlay'));
+
+    function loadLogo(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const logo = document.getElementById('logoOverlay');
+        logo.src = e.target.result;
+        isLogoUploaded = true;
+        applyLogoSettings();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function applyLogoSettings() {
+      const size = document.getElementById('logoSize').value || 131;
+      document.getElementById('logoSizeVal').textContent = size;
+      const logo = document.getElementById('logoOverlay');
+      logo.style.width = size + 'px';
+      logo.style.height = size + 'px';
+    }
+
+    function loadBackground(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('captureArea').style.backgroundImage = `url('${e.target.result}')`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Export PNG & ZIP
+    async function downloadPNG() {
+      const canvas = await html2canvas(document.getElementById('captureArea'), { scale: 2 });
+      const link = document.createElement('a');
+      link.download = `Slide_${currentIndex + 1}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    async function downloadAllPNGs() {
+      if (typeof JSZip === 'undefined') return;
+      const zip = new JSZip();
+      const orig = currentIndex;
+
+      for (let i = 0; i < questions.length; i++) {
+        currentIndex = i;
+        renderQuestion();
+        await new Promise(r => setTimeout(r, 100));
+        const canvas = await html2canvas(document.getElementById('captureArea'), { scale: 2 });
+        const data = canvas.toDataURL('image/png').split(',')[1];
+        zip.file(`Question_${i + 1}.png`, data, { base64: true });
+      }
+
+      currentIndex = orig;
+      renderQuestion();
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.download = 'Quiz_Slides.zip';
+      link.href = URL.createObjectURL(content);
+      link.click();
+    }
+
+    // Window Resize Handler to recalculate font fitting
+    window.addEventListener('resize', autoFitQuestionText);
+
+    // Init
+    renderQuestion();
+  </script>
+</body>
+</html>

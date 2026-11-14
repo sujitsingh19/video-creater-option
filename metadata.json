@@ -1,0 +1,6 @@
+{
+  "name": "Quiz Slide Studio",
+  "description": "16:9 Quiz Slide Automation Tool with auto-fitting typography, bulk pipe import, timer & logo overlays, and HD PNG/ZIP export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

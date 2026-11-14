@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Quiz Slide Studio</string>
+    <string name="subtitle_auto_fit">16:9 Auto-Fitting Slide Generator</string>
+    <string name="action_bulk_upload">Bulk Upload</string>
+    <string name="action_export_png">HD PNG</string>
+    <string name="action_export_zip">All ZIP</string>
+    <string name="action_previous">Previous</string>
+    <string name="action_next">Next</string>
+    <string name="action_show_answer">Show Answer</string>
+    <string name="action_start_timer">Start Timer</string>
+    <string name="action_timer_running">Timer Running</string>
+    <string name="cd_previous_slide">Previous slide</string>
+    <string name="cd_next_slide">Next slide</string>
+    <string name="cd_show_answer">Reveal correct answer</string>
+    <string name="cd_start_timer">Start quiz timer</string>
+    <string name="cd_bulk_questions">Manage and bulk upload questions</string>
+    <string name="cd_export_png">Download current slide as HD PNG</string>
+    <string name="cd_export_zip">Download all slides as ZIP</string>
+    <string name="cd_slide_logo">Uploaded channel logo overlay</string>
+    <string name="cd_slide_background">Uploaded slide background</string>
+</resources>

@@ -1,0 +1,47 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Main 16:9 Slide Frame Outline -->
+    <path
+        android:fillColor="#00AEEF"
+        android:pathData="M24,33 L84,33 A4,4 0 0 1 88,37 L88,71 A4,4 0 0 1 84,75 L24,75 A4,4 0 0 1 20,71 L20,37 A4,4 0 0 1 24,33 Z" />
+
+    <!-- Yellow Question Banner -->
+    <path
+        android:fillColor="#FFEA00"
+        android:pathData="M25,36 L83,36 A2.5,2.5 0 0 1 85.5,38.5 L85.5,47.5 A2.5,2.5 0 0 1 83,50 L25,50 A2.5,2.5 0 0 1 22.5,47.5 L22.5,38.5 A2.5,2.5 0 0 1 25,36 Z" />
+
+    <!-- Question Mark / Accent Bars inside Yellow Box -->
+    <path
+        android:fillColor="#1E00FF"
+        android:pathData="M29,41.5 L67,41.5 A1.5,1.5 0 0 1 68.5,43 A1.5,1.5 0 0 1 67,44.5 L29,44.5 A1.5,1.5 0 0 1 27.5,43 A1.5,1.5 0 0 1 29,41.5 Z" />
+    <path
+        android:fillColor="#1E00FF"
+        android:pathData="M73,41.5 L79,41.5 A1.5,1.5 0 0 1 80.5,43 A1.5,1.5 0 0 1 79,44.5 L73,44.5 A1.5,1.5 0 0 1 71.5,43 A1.5,1.5 0 0 1 73,41.5 Z" />
+
+    <!-- Option A (Blue) -->
+    <path
+        android:fillColor="#0038FF"
+        android:pathData="M24.5,53 L60.5,53 A2,2 0 0 1 62.5,55 L62.5,57.5 A2,2 0 0 1 60.5,59.5 L24.5,59.5 A2,2 0 0 1 22.5,57.5 L22.5,55 A2,2 0 0 1 24.5,53 Z" />
+
+    <!-- Option B (Correct Answer Green Pop) -->
+    <path
+        android:fillColor="#16A34A"
+        android:pathData="M24.5,61.5 L62.5,61.5 A2,2 0 0 1 64.5,63.5 L64.5,66 A2,2 0 0 1 62.5,68 L24.5,68 A2,2 0 0 1 22.5,66 L22.5,63.5 A2,2 0 0 1 24.5,61.5 Z" />
+
+    <!-- Option C (Blue) -->
+    <path
+        android:fillColor="#0038FF"
+        android:pathData="M24.5,69.5 L60.5,69.5 A1.5,1.5 0 0 1 62,71 L62,72 A1.5,1.5 0 0 1 60.5,73.5 L24.5,73.5 A1.5,1.5 0 0 1 23,72 L23,71 A1.5,1.5 0 0 1 24.5,69.5 Z" />
+
+    <!-- Timer Circle Badge on Right -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M76,55 A8,8 0 1,0 76,71 A8,8 0 1,0 76,55 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M75,58.5 L77,58.5 L77,63.5 L80.5,65.5 L79.5,67.2 L75,64.5 Z" />
+</vector>
